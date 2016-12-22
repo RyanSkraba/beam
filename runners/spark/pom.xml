@@ -233,6 +233,19 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-hdfs</artifactId>
+      <version>${project.version}</version>
+      <exclusions>
+        <!-- Use Hadoop/Spark's backend logger instead of jdk14 for tests -->
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-jdk14</artifactId>
+        </exclusion>
+      </exclusions>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro-mapred</artifactId>
       <version>${avro.version}</version>
