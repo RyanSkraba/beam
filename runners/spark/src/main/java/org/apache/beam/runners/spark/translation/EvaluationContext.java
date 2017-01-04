@@ -203,8 +203,7 @@ public class EvaluationContext {
 
   <T> Iterable<WindowedValue<T>> getWindowedValues(PCollection<T> pcollection) {
     @SuppressWarnings("unchecked")
-    BoundedDataset<T> boundedDataset = (BoundedDataset<T>) datasets.get(pcollection);
-    leaves.remove(boundedDataset);
+    BoundedDataset<T> boundedDataset = (BoundedDataset<T>) borrowDataset(pcollection);
     return boundedDataset.getValues(pcollection);
   }
 
