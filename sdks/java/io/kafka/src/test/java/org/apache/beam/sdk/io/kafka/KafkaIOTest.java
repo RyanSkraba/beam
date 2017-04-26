@@ -18,6 +18,8 @@
 package org.apache.beam.sdk.io.kafka;
 
 import static org.apache.beam.sdk.transforms.display.DisplayDataMatchers.hasDisplayItem;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
@@ -41,13 +43,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
+import org.apache.beam.sdk.Pipeline.PipelineVisitor;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.BigEndianLongCoder;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
+import org.apache.beam.sdk.io.BoundedReadFromUnboundedSource;
 import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.UnboundedSource.UnboundedReader;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.runners.TransformHierarchy.Node;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Count;
@@ -63,6 +68,7 @@ import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -194,16 +200,17 @@ public class KafkaIOTest {
   }
 
   private static class ConsumerFactoryFn
-                implements SerializableFunction<Map<String, Object>, Consumer<byte[], byte[]>> {
+      implements SerializableFunction<Map<String, Object>, Consumer<byte[], byte[]>> {
+
     private final List<String> topics;
     private final int partitionsPerTopic;
     private final int numElements;
     private final OffsetResetStrategy offsetResetStrategy;
 
     public ConsumerFactoryFn(List<String> topics,
-                             int partitionsPerTopic,
-                             int numElements,
-                             OffsetResetStrategy offsetResetStrategy) {
+        int partitionsPerTopic,
+        int numElements,
+        OffsetResetStrategy offsetResetStrategy) {
       this.topics = topics;
       this.partitionsPerTopic = partitionsPerTopic;
       this.numElements = numElements;
@@ -243,6 +250,7 @@ public class KafkaIOTest {
   }
 
   private static class AssertMultipleOf implements SerializableFunction<Iterable<Long>, Void> {
+
     private final int num;
 
     public AssertMultipleOf(int num) {
@@ -261,21 +269,21 @@ public class KafkaIOTest {
   public static void addCountingAsserts(PCollection<Long> input, long numElements) {
     // Count == numElements
     PAssert
-      .thatSingleton(input.apply("Count", Count.<Long>globally()))
-      .isEqualTo(numElements);
+        .thatSingleton(input.apply("Count", Count.<Long>globally()))
+        .isEqualTo(numElements);
     // Unique count == numElements
     PAssert
-      .thatSingleton(input.apply(Distinct.<Long>create())
-                          .apply("UniqueCount", Count.<Long>globally()))
-      .isEqualTo(numElements);
+        .thatSingleton(input.apply(Distinct.<Long>create())
+            .apply("UniqueCount", Count.<Long>globally()))
+        .isEqualTo(numElements);
     // Min == 0
     PAssert
-      .thatSingleton(input.apply("Min", Min.<Long>globally()))
-      .isEqualTo(0L);
+        .thatSingleton(input.apply("Min", Min.<Long>globally()))
+        .isEqualTo(0L);
     // Max == numElements-1
     PAssert
-      .thatSingleton(input.apply("Max", Max.<Long>globally()))
-      .isEqualTo(numElements - 1);
+        .thatSingleton(input.apply("Max", Max.<Long>globally()))
+        .isEqualTo(numElements - 1);
   }
 
   @Test
@@ -336,17 +344,18 @@ public class KafkaIOTest {
 
     // assert that every element is a multiple of 5.
     PAssert
-      .that(input)
-      .satisfies(new AssertMultipleOf(5));
+        .that(input)
+        .satisfies(new AssertMultipleOf(5));
 
     PAssert
-      .thatSingleton(input.apply(Count.<Long>globally()))
-      .isEqualTo(numElements / 10L);
+        .thatSingleton(input.apply(Count.<Long>globally()))
+        .isEqualTo(numElements / 10L);
 
     p.run();
   }
 
   private static class ElementValueDiff extends DoFn<Long, Long> {
+
     @ProcessElement
     public void processElement(ProcessContext c) throws Exception {
       c.output(c.element() - c.timestamp().getMillis());
@@ -374,6 +383,7 @@ public class KafkaIOTest {
   }
 
   private static class RemoveKafkaMetadata<K, V> extends DoFn<KafkaRecord<K, V>, KV<K, V>> {
+
     @ProcessElement
     public void processElement(ProcessContext ctx) throws Exception {
       ctx.output(ctx.element().getKV());
@@ -398,8 +408,8 @@ public class KafkaIOTest {
     for (int i = 0; i < splits.size(); ++i) {
       pcollections = pcollections.and(
           p.apply("split" + i, Read.from(splits.get(i)).withMaxNumRecords(elementsPerSplit))
-           .apply("Remove Metadata " + i, ParDo.of(new RemoveKafkaMetadata<Integer, Long>()))
-           .apply("collection " + i, Values.<Long>create()));
+              .apply("Remove Metadata " + i, ParDo.of(new RemoveKafkaMetadata<Integer, Long>()))
+              .apply("collection " + i, Values.<Long>create()));
     }
     PCollection<Long> input = pcollections.apply(Flatten.<Long>pCollections());
 
@@ -411,7 +421,8 @@ public class KafkaIOTest {
    * A timestamp function that uses the given value as the timestamp.
    */
   private static class ValueAsTimestampFn
-                       implements SerializableFunction<KV<Integer, Long>, Instant> {
+      implements SerializableFunction<KV<Integer, Long>, Instant> {
+
     @Override
     public Instant apply(KV<Integer, Long> input) {
       return new Instant(input.getValue());
@@ -445,9 +456,9 @@ public class KafkaIOTest {
     // create a single split:
     UnboundedSource<KafkaRecord<Integer, Long>, KafkaCheckpointMark> source =
         mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
-          .makeSource()
-          .generateInitialSplits(1, PipelineOptionsFactory.create())
-          .get(0);
+            .makeSource()
+            .generateInitialSplits(1, PipelineOptionsFactory.create())
+            .get(0);
 
     UnboundedReader<KafkaRecord<Integer, Long>> reader = source.createReader(null, null);
     final int numToSkip = 20; // one from each partition.
@@ -534,6 +545,50 @@ public class KafkaIOTest {
   }
 
   @Test
+  public void testBoundedSource() {
+    // same as testUnboundedSource, but with single topic
+
+    // Bounded Kafka read using maxNumRecords.
+    KafkaIO.Read<Integer, Long> reader = KafkaIO.<Integer, Long>read()
+        .withBootstrapServers("none")
+        .withTopic("my_topic")
+        .withKeyCoder(BigEndianIntegerCoder.of())
+        .withValueCoder(BigEndianLongCoder.of())
+        .withMaxNumRecords(100);
+
+    DisplayData datax = DisplayData.from(reader);
+
+    // assertThat(data, hasDisplayItem("foo", "bar"));
+
+    // Pipeline norun = new WithCrashingPipelineRunner()
+
+    PCollection<KV<Integer, Long>> input = p
+        .apply(reader.withoutMetadata());
+    p.traverseTopologically(new PipelineVisitor.Defaults() {
+      @Override
+      public CompositeBehavior enterCompositeTransform(Node node) {
+        if (node.getTransform() instanceof BoundedReadFromUnboundedSource) {
+          BoundedReadFromUnboundedSource<?> bounded = (BoundedReadFromUnboundedSource<?>) node
+              .getTransform();
+          DisplayData data = DisplayData.from(bounded);
+          assertThat(data, hasDisplayItem("maxRecords", 100));
+          assertThat(data, not(hasDisplayItem("maxReadTime")));
+
+        }
+        return super.enterCompositeTransform(node);
+      }
+    });
+
+    assertThat(input.isBounded(), is(IsBounded.BOUNDED));
+
+//    p.run().waitUntilFinish();
+//    //assertThat(((Read.Bounded<KV<Integer,Long>>)input).getSource(),
+//    // instanceOf(BoundedReadFromUnboundedSource.class));
+
+  }
+
+
+  @Test
   public void testSink() throws Exception {
     // Simply read from kafka source and write to kafka sink. Then verify the records
     // are correctly published to mock kafka producer.
@@ -549,14 +604,14 @@ public class KafkaIOTest {
       String topic = "test";
 
       p
-        .apply(mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
-            .withoutMetadata())
-        .apply(KafkaIO.<Integer, Long>write()
-            .withBootstrapServers("none")
-            .withTopic(topic)
-            .withKeyCoder(BigEndianIntegerCoder.of())
-            .withValueCoder(BigEndianLongCoder.of())
-            .withProducerFactoryFn(new ProducerFactoryFn()));
+          .apply(mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
+              .withoutMetadata())
+          .apply(KafkaIO.<Integer, Long>write()
+              .withBootstrapServers("none")
+              .withTopic(topic)
+              .withKeyCoder(BigEndianIntegerCoder.of())
+              .withValueCoder(BigEndianLongCoder.of())
+              .withProducerFactoryFn(new ProducerFactoryFn()));
 
       p.run();
 
@@ -581,15 +636,15 @@ public class KafkaIOTest {
       String topic = "test";
 
       p
-        .apply(mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
-            .withoutMetadata())
-        .apply(Values.<Long>create()) // there are no keys
-        .apply(KafkaIO.<Integer, Long>write()
-            .withBootstrapServers("none")
-            .withTopic(topic)
-            .withValueCoder(BigEndianLongCoder.of())
-            .withProducerFactoryFn(new ProducerFactoryFn())
-            .values());
+          .apply(mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
+              .withoutMetadata())
+          .apply(Values.<Long>create()) // there are no keys
+          .apply(KafkaIO.<Integer, Long>write()
+              .withBootstrapServers("none")
+              .withTopic(topic)
+              .withValueCoder(BigEndianLongCoder.of())
+              .withProducerFactoryFn(new ProducerFactoryFn())
+              .values());
 
       p.run();
 
@@ -623,14 +678,14 @@ public class KafkaIOTest {
           new ProducerSendCompletionThread(10, 100).start();
 
       p
-        .apply(mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
-            .withoutMetadata())
-        .apply(KafkaIO.<Integer, Long>write()
-            .withBootstrapServers("none")
-            .withTopic(topic)
-            .withKeyCoder(BigEndianIntegerCoder.of())
-            .withValueCoder(BigEndianLongCoder.of())
-            .withProducerFactoryFn(new ProducerFactoryFn()));
+          .apply(mkKafkaReadTransform(numElements, new ValueAsTimestampFn())
+              .withoutMetadata())
+          .apply(KafkaIO.<Integer, Long>write()
+              .withBootstrapServers("none")
+              .withTopic(topic)
+              .withKeyCoder(BigEndianIntegerCoder.of())
+              .withValueCoder(BigEndianLongCoder.of())
+              .withProducerFactoryFn(new ProducerFactoryFn()));
 
       try {
         p.run();
@@ -722,32 +777,32 @@ public class KafkaIOTest {
    * the producer in parallel, but there are only one or two tests.
    */
   private static final MockProducer<Integer, Long> MOCK_PRODUCER =
-    new MockProducer<Integer, Long>(
-      false, // disable synchronous completion of send. see ProducerSendCompletionThread below.
-      new KafkaIO.CoderBasedKafkaSerializer<Integer>(),
-      new KafkaIO.CoderBasedKafkaSerializer<Long>()) {
+      new MockProducer<Integer, Long>(
+          false, // disable synchronous completion of send. see ProducerSendCompletionThread below.
+          new KafkaIO.CoderBasedKafkaSerializer<Integer>(),
+          new KafkaIO.CoderBasedKafkaSerializer<Long>()) {
 
-      // override flush() so that it does not complete all the waiting sends, giving a chance to
-      // ProducerCompletionThread to inject errors.
+        // override flush() so that it does not complete all the waiting sends, giving a chance to
+        // ProducerCompletionThread to inject errors.
 
-      @Override
-      public void flush() {
-        while (completeNext()) {
-          // there are some uncompleted records. let the completion thread handle them.
-          try {
-            Thread.sleep(10);
-          } catch (InterruptedException e) {
+        @Override
+        public void flush() {
+          while (completeNext()) {
+            // there are some uncompleted records. let the completion thread handle them.
+            try {
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+            }
           }
         }
-      }
-    };
+      };
 
   // use a separate object serialize tests using MOCK_PRODUCER so that we don't interfere
   // with Kafka MockProducer locking itself.
   private static final Object MOCK_PRODUCER_LOCK = new Object();
 
   private static class ProducerFactoryFn
-    implements SerializableFunction<Map<String, Object>, Producer<Integer, Long>> {
+      implements SerializableFunction<Map<String, Object>, Producer<Integer, Long>> {
 
     @SuppressWarnings("unchecked")
     @Override
@@ -769,6 +824,7 @@ public class KafkaIOTest {
   }
 
   private static class InjectedErrorException extends RuntimeException {
+
     public InjectedErrorException(String message) {
       super(message);
     }
