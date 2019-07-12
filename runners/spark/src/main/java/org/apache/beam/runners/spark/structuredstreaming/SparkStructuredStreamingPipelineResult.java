@@ -42,7 +42,7 @@ public class SparkStructuredStreamingPipelineResult implements PipelineResult {
   final SparkSession sparkSession;
   PipelineResult.State state;
 
-  // TODO: Implement results on a streaming pipeline. Currently fixed to not streaming.
+  // TODO: Implement results on a streaming pipeline. Currently does not stream.
   final boolean isStreaming = false;
 
   SparkStructuredStreamingPipelineResult(
