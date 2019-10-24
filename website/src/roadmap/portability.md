@@ -142,7 +142,7 @@ their respective components.
 
 ## Status
 
-MVP, and FeatureCompletness nearly done (missing SDF, timers) for
+MVP, and Feature completeness nearly done (missing SDF, timers) for
 SDKs, Python ULR, and shared java runners library.
 Currently, the Flink and Spark runners support portable pipeline execution.
 See the

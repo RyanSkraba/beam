@@ -275,10 +275,10 @@ When executing your pipeline with the Spark Runner, you should consider the foll
 
 ### Using spark-submit
 
-When submitting a Spark application to cluster, it is common (and recommended) to use the <code>spark-submit</code> script that is provided with the spark installation.
+When submitting a Spark application to a cluster, it is common (and recommended) to use the <code>spark-submit</code> script that is provided with the spark installation.
 The <code>PipelineOptions</code> described above are not to replace <code>spark-submit</code>, but to complement it.
 Passing any of the above mentioned options could be done as one of the <code>application-arguments</code>, and setting <code>--master</code> takes precedence.
-For more on how to generally use <code>spark-submit</code> checkout Spark [documentation](http://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit).
+For more on how to generally use <code>spark-submit</code> check out then Spark [documentation](http://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit).
 
 ### Monitoring your job
 
