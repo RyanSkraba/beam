@@ -84,14 +84,12 @@ public class StructuredStreamingPipelineStateTest implements Serializable {
 
   private SparkStructuredStreamingPipelineOptions getStreamingOptions() {
     options.setRunner(SparkStructuredStreamingRunner.class);
-    options.setTestMode(true);
     options.setStreaming(true);
     return options;
   }
 
   private SparkStructuredStreamingPipelineOptions getBatchOptions() {
     options.setRunner(SparkStructuredStreamingRunner.class);
-    options.setTestMode(true);
     options.setStreaming(false); // explicit because options is reused throughout the test.
     return options;
   }
